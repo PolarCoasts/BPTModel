@@ -17,6 +17,7 @@ arguments
    options.intMethod char {mustBeMember(options.intMethod,{'linear','nearest','next','previous','pchip','cubic','v5cubic','makima','spline'})}='linear'  % method for interpolating ambient profile
    options.extValue_T {mustBeValueOrChar(options.extValue_T,"extrap")}='extrap' % to extend ambient profile to full plume range, extrapolate or set to specific value
    options.extValue_S {mustBeValueOrChar(options.extValue_S,"extrap")}='extrap' % to extend ambient profile to full plume range, extrapolate or set to specific value
+   options.type char {mustBeMember(options.type,{'line','point'})}='line' % run model as line- or point-plume
 end
 % INPUTS:
 %     required:
@@ -76,9 +77,14 @@ end
 % FUNCTIONS called:
 %       line_plume(...)
 %       melt_calc(...)
-   
-% calculate discharge as m2/s (total discharge in m3 / width of plume)
-qsg = Q/options.W;
+
+if strcmp(options.type,'line')
+    % calculate discharge as m2/s (total discharge in m3 / width of plume)
+    qsg = Q/options.W;
+elseif strcmp(options.type,'point')
+    % keep discharge as m3/s
+    qsg = Q;
+end
 
 % interpolate ambient profile to 0.1 m depth increments, extrapolate/fill to full depth range
 ii=find(~isnan(aT) & ~isnan(aS));
@@ -126,20 +132,30 @@ plumeRho_GL = sw_pden(si,ti,abs(GL),0);
 gp = (ambientRho_GL-plumeRho_GL)*const.g/const.rho0;
 
 % initial velocity of plume
-if ismember(options.ui,"balance")
-    ui = (gp*qsg/options.alpha)^(1/3); %balance of momentum and buoyancy for a line
-else
-    ui=options.ui;
+if strcmp(options.type,'line')
+    if ismember(options.ui,"balance")
+        ui = (gp*qsg/options.alpha)^(1/3); %balance of momentum and buoyancy for a line
+    else
+        ui=options.ui;
+    end
+    bi = qsg / ui; %plume radius or thickness in cross-terminus direction (m)
+elseif strcmp(options.type,'point')
+    if ismember(options.ui,"balance")
+        ui = 2/pi*(5*pi^2*gp/(32*options.alpha))^(2/5)*qsg^(1/5);
+    else
+        ui=options.ui;
+    end
+    bi = sqrt(2*qsg / (pi*ui)); %plume radius (m)
 end
-
-bi = qsg / ui; %plume radius or thickness in cross-terminus direction (m)
-
 %% Solve coupled system of ODEs 
 % using a 4th order MATLAB integrator
 %    z = depth
 %    X is m x 4 with columns of plume: width, velocity, T , S
-
-[z,X]=ode45(@(Z,x) line_plume(Z,x,const,options,experiment.ambient),[GL,surface],[bi,ui,ti,si]);
+if strcmp(options.type,'line')
+    [z,X]=ode45(@(Z,x) line_plume(Z,x,const,options,experiment.ambient),[GL,surface],[bi,ui,ti,si]);
+elseif strcmp(options.type,'point')
+    [z,X]=ode45(@(Z,x) point_plume(Z,x,const,options,experiment.ambient),[GL,surface],[bi,ui,ti,si]);
+end
 
 %% Compute additional variables from solution of ODEs
 
@@ -159,8 +175,15 @@ A = zeros(m,4);
     % A(:,4) = plume density (kg/m3)
 
 for i=1:m   
-    %volume flux (m2/s)
-    A(i,1)=X(i,1)*X(i,2);
+    % define a geometric factor to account for differing areas
+    if strcmp(options.type,'line')
+        geom = options.W;
+    elseif strcmp(options.type,'point')
+        geom = pi*X(i,1)/2;
+    end
+    
+    %volume flux (m3/s)
+    A(i,1)=geom*X(i,1)*X(i,2);
     
     % calculate total velocity that drives melting: upwelling + horizontal 
     uTot = sqrt(X(i,2).^2 + options.uh.^2); 
@@ -172,8 +195,8 @@ for i=1:m
     %plume density (kg m^-3)
     A(i,4)=sw_pden(X(i,4),X(i,3),abs(z(i)),0);
     
-    %momentum flux (m^4 s^-1 - not right units?) - weird, this has a rho here too??
-    A(i,2)=X(i,1)*X(i,2)*X(i,2)*A(i,4);   
+    %momentum flux (Pa)
+    A(i,2)=X(i,2)*X(i,2)*A(i,4);   
 end
 
 %% Interpolate variables onto specified vertical grid and give final names
@@ -186,6 +209,7 @@ experiment.plume.density = interp1(z,A(:,4),depth);
 experiment.plume.volumeFlux = interp1(z,A(:,1),depth);
 experiment.plume.momentumFlux = interp1(z,A(:,2),depth); 
 experiment.plume.melt = interp1(z,A(:,3),depth);
+experiment.plume.type = options.type;
 
 %find depth of maximum melt
 mi = find(experiment.plume.melt == max(experiment.plume.melt),1);
@@ -207,7 +231,7 @@ end
 experiment.plume.maximumH = depth(wIndex(end));
 
 %add units for all plume variables
-experiment.plume.units={'depth (m)'; 'radius (m)'; 'w (m/s)'; 'temp (degrees C)'; 'salt (psu)'; 'density (kg/m^3)'; 'volumeFlux (m^3/s)'; 'momentumFlux (need to check)'; 'melt (m/day)'; 'maximumMD (m)'; 'neutralDensity (m)'; 'maximumH (m)'};
+experiment.plume.units={'depth (m)'; 'radius (m)'; 'w (m/s)'; 'temp (C)'; 'salt (psu)'; 'density (kg/m^3)'; 'volumeFlux (m^3/s)'; 'momentumFlux (Pa)'; 'melt (m/day)'; 'maximumMD (m)'; 'neutralDensity (m)'; 'maximumH (m)'};
 
 %% calculate N2 of ambient profile
 experiment.ambient.N2 = real(sqrt(const.g/const.rho0 * diff(ambientRho))); 

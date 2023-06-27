@@ -55,15 +55,15 @@ a = const.lambda1 * (options.gammaT * const.cw -options.gammaS*const.ci);
 b = options.gammaS*const.ci*(const.lambda1 * S - const.lambda2-const.lambda3*z + ...
     options.iceT - (const.L/const.ci)) - options.gammaT*const.cw*(T-const.lambda2-const.lambda3*z);
 
-c = options.gammaS * S * (const.ci * (const.lambda2 + const.lambda3*z-options.iceT)+const.L);
+c = options.gammaS * S .* (const.ci * (const.lambda2 + const.lambda3*z-options.iceT)+const.L);
 
 % calculate Sb from a, b, c
-Sb = (1/(2*a)) * (-b-sqrt(b^2 - 4*a*c));
+Sb = (1/(2*a)) * (-b-sqrt(b.^2 - 4*a*c));
 % calculate Tb from linearized freezing temp. equation
 Tb = const.lambda1*Sb+const.lambda2+const.lambda3*z;
 
 % calculate melt
-melt = options.gammaS * sqrt(options.Cd) * u * (S-Sb)/Sb;
+melt = options.gammaS * sqrt(options.Cd) * u .* (S-Sb)./Sb;
 
 end
 
