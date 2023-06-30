@@ -17,13 +17,13 @@ arguments
    options.intMethod char {mustBeMember(options.intMethod,{'linear','nearest','next','previous','pchip','cubic','v5cubic','makima','spline'})}='linear'  % method for interpolating ambient profile
    options.extValue_T {mustBeValueOrChar(options.extValue_T,"extrap")}='extrap' % to extend ambient profile to full plume range, extrapolate or set to specific value
    options.extValue_S {mustBeValueOrChar(options.extValue_S,"extrap")}='extrap' % to extend ambient profile to full plume range, extrapolate or set to specific value
-   options.type char {mustBeMember(options.type,{'line','point'})}='line' % run model as line- or point-plume
+   options.type char {mustBeMember(options.type,{'line','point','ambient'})}='line' % run model as line- or point-plume, ambient melt runs as stacked line-plumes
 end
 % INPUTS:
 %     required:
 %     - aD / aT / aS = depth, temperature, and salinity of ambient water
 %     - GL = grounding line depth
-%     - Q = subglacial discharge flux
+%     - Q = subglacial discharge flux (type='ambient' requires small discharge to initiate plume, ex: 1e-10 with W=1)
 %     
 %     optional (default):
 %     - iceT (-10) = temperature of ice
@@ -38,8 +38,8 @@ end
 %     - extValue_T ('extrap') = value to fill ambient temperature profile with to extend to full water depth (or specify 'extrap')
 %     - extValue_S ('extrap') = value to fill ambient salinity profile with to extend to full water depth (or specify 'extrap')
 % 
-% examples: experiment = BPTline(aD,aT,aS,GL,Q)  *minimum inputs
-%           experiment = BPTline(aD,aT,aS,GL,Q,W=200,alpha=0.11) *setting two optional values
+% examples: experiment = BPTmodel(aD,aT,aS,GL,Q)  *minimum inputs
+%           experiment = BPTmodel(aD,aT,aS,GL,Q,type='point',Cd=2e-3,alpha=0.11) *setting two optional values, run as point plume
 % 
 % OUTPUT (structure with four fields):
 %     plume:
@@ -51,7 +51,7 @@ end
 %     - radius = thickness of plume (perpendicular to ice)
 %     - maximumMD = depth of maximum melt rate
 %     - volumeFlux = volume flux of plume
-%     - momentumFlux = momentum flux of plume (**units need to be checked**)
+%     - momentumFlux = momentum flux of plume
 %     - units = list of units for plume variables
 % 
 %     ambient:
@@ -75,11 +75,10 @@ end
 %     - gammaS = haline transfer coefficient
 % 
 % FUNCTIONS called:
-%       line_plume(...)
+%       line_plume(...) or point_plume(...)
 %       melt_calc(...)
-
-if strcmp(options.type,'line')
-    % calculate discharge as m2/s (total discharge in m3 / width of plume)
+if strcmp(options.type,'line') || strcmp(options.type,'ambient')
+    % calculate discharge as m2/s (discharge per unit outlet width)
     qsg = Q/options.W;
 elseif strcmp(options.type,'point')
     % keep discharge as m3/s
@@ -89,7 +88,7 @@ end
 % interpolate ambient profile to 0.1 m depth increments, extrapolate/fill to full depth range
 ii=find(~isnan(aT) & ~isnan(aS));
 aD_good=aD(ii); aT_good=aT(ii); aS_good=aS(ii);
-depth=0:-.1:GL;
+depth=round(0:-.1:GL,1);
 ambientTemp=interp1(aD_good,aT_good,depth,options.intMethod,options.extValue_T);
 ambientSalt=interp1(aD_good,aS_good,depth,options.intMethod,options.extValue_S);
 
@@ -132,7 +131,7 @@ plumeRho_GL = sw_pden(si,ti,abs(GL),0);
 gp = (ambientRho_GL-plumeRho_GL)*const.g/const.rho0;
 
 % initial velocity of plume
-if strcmp(options.type,'line')
+if strcmp(options.type,'line') || strcmp(options.type,'ambient')
     if ismember(options.ui,"balance")
         ui = (gp*qsg/options.alpha)^(1/3); %balance of momentum and buoyancy for a line
     else
@@ -151,84 +150,128 @@ end
 % using a 4th order MATLAB integrator
 %    z = depth
 %    X is m x 4 with columns of plume: width, velocity, T , S
+
 if strcmp(options.type,'line')
     [z,X]=ode45(@(Z,x) line_plume(Z,x,const,options,experiment.ambient),[GL,surface],[bi,ui,ti,si]);
 elseif strcmp(options.type,'point')
     [z,X]=ode45(@(Z,x) point_plume(Z,x,const,options,experiment.ambient),[GL,surface],[bi,ui,ti,si]);
+elseif strcmp(options.type,'ambient')
+    di=GL; % initial depth of bottom plume is grounding line depth
+    count=0; maxH=[]; nD=[];
+    while di<0
+        count=count+1;
+        [tz,tX]=ode45(@(Z,x) line_plume(Z,x,const,options,experiment.ambient),[di,surface],[bi,ui,ti,si]);
+        az(count)={tz};
+        aX(count)={tX};
+        %recalculate initial conditions for next plume
+        di=round(tz(end)+.1,1);
+        ti=sw_fp(0,abs(di));
+        gp=(ambientRho(abs(depth)==abs(di))-sw_pden(si,ti,abs(di),0))*const.g/const.rho0;
+        ui=(gp*qsg/options.alpha)^(1/3);
+        bi=qsg/ui;
+        % store max plume height for each plume
+        maxH=[maxH di-.1];
+        % return some progress status to user
+        formatSpec='Plume %2.0f outflows at %4.1f m\n  ';
+        fprintf(formatSpec,count,di-.1)
+        if di<0
+            formatSpec2='    Solving for next plume ... \n';
+        else
+            formatSpec2='    Plume integration complete. Preparing final output...\n';
+        end
+        fprintf(formatSpec2)
+    end
+end
+
+%% Interpolate to specified grid 
+if strcmp(options.type,'ambient')
+    nD=[];
+    for i=1:count
+        ar(i,:)=interp1(az{i},aX{i}(:,1),depth);
+        aw(i,:)=interp1(az{i},aX{i}(:,2),depth);
+        at(i,:)=interp1(az{i},aX{i}(:,3),depth);
+        as(i,:)=interp1(az{i},aX{i}(:,4),depth);
+        % find neutral density for each plume
+        arho=sw_pden(as(i,:),at(i,:),depth,0);
+        nDi=find(arho<=ambientRho,1);
+        nD=[nD depth(nDi)];
+    end
+    % combine ambient melt plumes into one profile
+    radius=sum(ar,'omitnan');
+    w=sum(aw,'omitnan');
+    temp=sum(at,'omitnan');
+    salt=sum(as,'omitnan');
+else
+    radius=interp1(z,X(:,1),depth);
+    w=interp1(z,X(:,2),depth);
+    temp=interp1(z,X(:,3),depth);
+    salt=interp1(z,X(:,4),depth);
 end
 
 %% Compute additional variables from solution of ODEs
 
-[m n] = size(X);
-A = zeros(m,4);
-
-% quantities from solving ODEs
-    % X(:,1) = radius / width of plume (m)
-    % X(:,2) = velocity of plume (m/s)
-    % X(:,3) = plume temperature (C)
-    % X(:,4) = plume salinity (psu)
-
-% quantities to calculate in the loop here
-    % A(:,1) = volume flux (m2/s)
-    % A(:,2) = momentum flux (m4/s)
-    % A(:,3) = melt rate (m/day)
-    % A(:,4) = plume density (kg/m3)
-
-for i=1:m   
-    % define a geometric factor to account for differing areas
-    if strcmp(options.type,'line')
-        geom = options.W;
-    elseif strcmp(options.type,'point')
-        geom = pi*X(i,1)/2;
-    end
-    
-    %volume flux (m3/s)
-    A(i,1)=geom*X(i,1)*X(i,2);
-    
-    % calculate total velocity that drives melting: upwelling + horizontal 
-    uTot = sqrt(X(i,2).^2 + options.uh.^2); 
-
-    %melt rate in m/s --> m/day
-    [melt_ms,~,~] = melt_calc(z(i), uTot, X(i,3), X(i,4), lambda1=const.lambda1, lambda2=const.lambda2, lambda3=const.lambda3, gammas=options.gammaS, gammaT=options.gammaT, Cd=options.Cd, iceT=options.iceT, L=const.L, ci=const.ci, cw=const.cw);
-    A(i,3)=24*60*60*melt_ms;
-    
-    %plume density (kg m^-3)
-    A(i,4)=sw_pden(X(i,4),X(i,3),abs(z(i)),0);
-    
-    %momentum flux (Pa)
-    A(i,2)=X(i,2)*X(i,2)*A(i,4);   
+% define a geometric factor to account for differing plume areas
+if strcmp(options.type,'line') || strcmp(options.type,'ambient')
+    geom = options.W;
+elseif strcmp(options.type,'point')
+    geom = pi.*radius./2;
 end
 
-%% Interpolate variables onto specified vertical grid and give final names
+% volume flux (m3/s)
+Fv=geom.*radius/2;
+
+% calculate total velocity that drives melting: upwelling + horizontal
+uTot=sqrt(w.^2 + options.uh.^2);
+
+% melt rate (m/s --> m/day)
+[melt_ms,~,~] = melt_calc(depth, uTot, temp, salt, lambda1=const.lambda1, lambda2=const.lambda2, lambda3=const.lambda3, gammaS=options.gammaS, gammaT=options.gammaT, Cd=options.Cd, iceT=options.iceT, L=const.L, ci=const.ci, cw=const.cw);
+melt=24*60*60*melt_ms;
+
+%plume density (kg m^-3)
+density=sw_pden(salt,temp,abs(depth),0);
+
+%momentum flux (Pa)
+Fm=w.*w.*density;   
+
+experiment.uTot=uTot;
+experiment.melt=melt;
+%% Put plume properties in output structure
 experiment.plume.depth = depth;
-experiment.plume.radius = interp1(z,X(:,1),depth);
-experiment.plume.w = interp1(z,X(:,2),depth); 
-experiment.plume.temp = interp1(z,X(:,3),depth);
-experiment.plume.salt = interp1(z,X(:,4),depth); 
-experiment.plume.density = interp1(z,A(:,4),depth);
-experiment.plume.volumeFlux = interp1(z,A(:,1),depth);
-experiment.plume.momentumFlux = interp1(z,A(:,2),depth); 
-experiment.plume.melt = interp1(z,A(:,3),depth);
+experiment.plume.radius = radius;
+experiment.plume.w = w; 
+experiment.plume.temp = temp;
+experiment.plume.salt = salt; 
+experiment.plume.density = density;
+experiment.plume.volumeFlux = Fv;
+experiment.plume.momentumFlux = Fm; 
+experiment.plume.melt = melt;
 experiment.plume.type = options.type;
 
 %find depth of maximum melt
-mi = find(experiment.plume.melt == max(experiment.plume.melt),1);
+[~,mi] = max(experiment.plume.melt);
 experiment.plume.maximumMD = depth(mi); 
 
-% find terminal level based on density
-tl = find(experiment.plume.density <= ambientRho,1);
-experiment.plume.neutralDensity = depth(tl);
+if strcmp(options.type,'line') || strcmp(options.type,'point')
+    % find terminal level based on density
+    tl = find(experiment.plume.density <= ambientRho,1);
+    experiment.plume.neutralDensity = depth(tl);
 
-%find where integration stops
-wIndex = find(isnan(experiment.plume.w));
+    %find where integration stops
+    wIndex = find(isnan(experiment.plume.w),1,'last');
 
-%if integration did not stop, then plume reached surface
-if isempty(wIndex)
-    wIndex = 1;
+    %if integration did not stop, then plume reached surface
+    if isempty(wIndex)
+        wIndex = 1;
+    end
+
+    %find maximum height (which is above terminal depth)
+    experiment.plume.maximumH = depth(wIndex);
+
+elseif strcmp(options.type,'ambient')
+    % the above values have already been calculated separately for each plume
+    experiment.plume.neutralDensity = nD;
+    experiment.plume.maximumH = maxH;
 end
-
-%find maximum height (which is above terminal depth)
-experiment.plume.maximumH = depth(wIndex(end));
 
 %add units for all plume variables
 experiment.plume.units={'depth (m)'; 'radius (m)'; 'w (m/s)'; 'temp (C)'; 'salt (psu)'; 'density (kg/m^3)'; 'volumeFlux (m^3/s)'; 'momentumFlux (Pa)'; 'melt (m/day)'; 'maximumMD (m)'; 'neutralDensity (m)'; 'maximumH (m)'};

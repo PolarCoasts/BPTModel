@@ -63,7 +63,7 @@ Sb = (1/(2*a)) * (-b-sqrt(b.^2 - 4*a*c));
 Tb = const.lambda1*Sb+const.lambda2+const.lambda3*z;
 
 % calculate melt
-melt = options.gammaS * sqrt(options.Cd) * u .* (S-Sb)./Sb;
+melt = options.gammaS * sqrt(options.Cd) * abs(u) .* (S-Sb)./Sb;
 
 end
 

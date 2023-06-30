@@ -1,7 +1,7 @@
 function [fig,ax]=BPTplots(plumestruct,var)
 
 arguments
-    plumestruct struct                  % structure containing plume output
+    plumestruct struct                  % structure containing model output
     var string=["radius" "w" "melt"]    % vector of strings containing variable names to plot
 end
 
@@ -42,10 +42,10 @@ for i=1:length(var)
     ylim([min(plumestruct.depth) max(plumestruct.depth)])
     set(ax(i),'FontSize',16)
     if i==1
-        legend([mh nd],'location','southeast')
+        legend([mh(1) nd(1)],'location','southeast')
     end
 end
-
+linkaxes(ax,'y')
 
 
 
