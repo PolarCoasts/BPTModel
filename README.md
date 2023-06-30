@@ -28,6 +28,6 @@
 - it requires an input of near-ice conditions (profiles of depth, along-ice velocity, ambient temperature and salinity) 
 	- will also accept scalar values of each
 - a variety of constants/coefficients are loaded with default values, but can be customized as optional inputs
-- outputs melt rate in m/s (optional outputs of boundary layer T and S)
+- outputs melt rate in m/s (optional outputs of boundary T and S)
 		
 		
