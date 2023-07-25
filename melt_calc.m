@@ -1,52 +1,51 @@
 function [melt, Tb, Sb] = melt_calc(z, u, T, S, const, options)
 
 arguments
-    z (1,:) {mustBeLessThanOrEqual(z,0)}        % depth
-    u (1,:) {mustBeEqualSize(u,z)}              % velocity that drives melting
-    T (1,:) {mustBeEqualSize(T,z)}              % temperature outside the BL (e.g. in plume)
-    S (1,:) {mustBeEqualSize(S,z)}              % salinity outside the BL (e.g. in plume)
+    z (1,:) {mustBeLessThanOrEqual(z,0)}        % depth (m)
+    u (1,:) {mustBeEqualSize(u,z)}              % velocity that drives melting (m/s)
+    T (1,:) {mustBeEqualSize(T,z)}              % temperature outside the BL (e.g. in plume) (C)
+    S (1,:) {mustBeEqualSize(S,z)}              % salinity outside the BL (e.g. in plume) (psu)
     const.cw (1,1) double=3974                  % heat capacity of seawater (J kg^-1 C^-1)
     const.ci (1,1) double=2009                  % heat capacity of ice (J kg^-1 C^-1)
     const.L (1,1) double=335000;                % latent heat of fusion (J kg^-1)
     const.lambda1 (1,1) double=-0.0573          % variation of freezing point with salinity (C psu^-1)
     const.lambda2 (1,1) double=0.0832           % freezing point offset (C)
     const.lambda3 (1,1) double=0.000761         % variation of freezing point with depth (C m^-1)
-    options.iceT (1,1) double=-10               % ice temperature (degrees C)
+    options.iceT (1,1) double=-10               % ice temperature (C)
     options.Cd (1,1) double=2.5e-3              % drag coefficient
     options.gammaT (1,1) double=0.022           % thermal transfer coefficient
     options.gammaS (1,1) double=0.00062         % haline transfer coefficient
 end
 
-% INPUTS
-%   required:
-%   - z = depth
-%   - u = velocity that drives melting
-%   - T = temperature outside the BL (e.g. in plume)
-%   - S = temperature outside the BL (e.g. in plume)
-%   
-%   constants (default): 
-%   - ci / cw = heat capacity of ice / water
-%   - L = latent heat of fusion
-%   - lamba* = coefficients for linearized freezing temp equation
-% 
-%   options (default):
-%   - gammaS = turbulent transfer coefficient for salt 
-%   - gammaT = turbulent transfer coefficient for temp
-%   - Cd = drag coefficient
-%   - iceT = temperature of ice
+% MELT_CALC solves for the submarine melt rate of ice given ambient water conditions
 %
-% OUTPUTS
-%   - melt = melt rate in m/s
-%   - Tb = temperature at ice-ocean boundary
-%   - Sb = salinity at ice-ocean boundary
+%   [melt,Tb,Sb] = melt_calc(z,u,T,S) for scalar or row vectors of equal size z,u,T,S (profiles of ambient ocean depth, 
+%   along-ice velocity, temperature, and salinity). Depth should be input as negative, increasing towards the free surface.
+%   Returns ice melt rate (m/s) and temperature (C) and salinity (psu) at the ice-ocean boundary.
 %
-% examples: [melt, Tb, Sb] = melt_calc(z, u, T, S)  *minimum inputs
-%           [melt, Tb, Sb] = melt_calc(z, u, T, S,iceT=0,gammaT=0.044) *setting two optional values
+%   [melt,Tb,Sb] = melt_calc(z,u,T,S,const,options) Specify values for optional inputs (const or options) shown below:
+%     ci/cw                             heat capacity of ice/water
+%     L                                 latent heat of fusion
+%     lamba1/lambda2/lambda3            coefficients for linearized freezing temp equation
+%     gammaS                            turbulent transfer coefficient for salt 
+%     gammaT                            turbulent transfer coefficient for temp
+%     Cd                                drag coefficient
+%     iceT                              temperature of ice (default is -10 C)
 %
-% DESCRIPTION:
-%       3-Equation Melt Parameterization (e.g. Jenkins 2011) 
-%       solve quadratic equation for Sb, Tb, and melt
-%       based on z, u, T, S and coefficients
+% Examples: 
+%   % minimum inputs
+%   [melt, Tb, Sb] = melt_calc(z, u, T, S)  
+%
+%   % setting two optional values
+%   [melt, Tb, Sb] = melt_calc(z, u, T, S,iceT=0,gammaT=0.044) 
+%
+% Usage:
+%   3-Equation Melt Parameterization (e.g. Jenkins 2011) 
+%   This function is called by BPTmodel, line_plume, and point_plume
+%   Can also be used as a stand-alone estimate of submarine melt neglecting plume dynamics
+%
+% See also BPTmodel, line_plume, point_plume
+
 
 
 % define a, b, c to solve quadratic equation for Sb

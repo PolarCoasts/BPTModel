@@ -1,4 +1,9 @@
 function yDot = point_plume(z,X,const,options,ambient)
+%POINT_PLUME
+%
+% This function is called by BPTmodel. It is not intended to be used as a stand-alone function.
+%
+% See also BPTmodel
 
 % INPUTS
 %   - z = depth
@@ -6,7 +11,7 @@ function yDot = point_plume(z,X,const,options,ambient)
 %   - X(2) = the plume velocity (m s^-1)
 %   - X(3) = the plume temperature (C)
 %   - X(4) = the plume salinity (psu)
-
+%
 %   - const = structure containing preset constants in the following fields: 
 %       - g = gravity accel
 %       - rho0 = reference density
@@ -50,4 +55,4 @@ yDot(3)=2*options.alpha*(interp1(ambient.depth,ambient.temp,z)-X(3))/X(1)+4*melt
 
 yDot(4)=2*options.alpha*(interp1(ambient.depth,ambient.salt,z)-X(4))/X(1)+4*melt*(Sb-X(4))/(pi*X(1)*X(2))-4*options.gammaS*sqrt(options.Cd)*(X(4)-Sb)/(pi*X(1))*wmelt/X(2);
 
-
+end

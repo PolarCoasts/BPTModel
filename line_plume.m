@@ -1,4 +1,9 @@
 function yDot = line_plume(z,X,const,options,ambient)
+%LINE_PLUME
+%
+% This function is called by BPTmodel. It is not intended to be used as a stand-alone function.
+%
+% See also BPTmodel
 
 % INPUTS
 %   - z = depth
@@ -50,6 +55,5 @@ wmelt = sqrt(X(2).^2 + ambient.u_horiz.^2);
 
  yDot(4)=options.alpha*(interp1(ambient.depth,ambient.salt,z)-X(4))/X(1)+melt*(Sb-X(4))/(X(1)*X(2))-options.gammaS*sqrt(options.Cd)*(X(4)-Sb)/(X(1))*wmelt/X(2);
 
-     % note: dT/dz and dS/dz have factor of wmelt/w on the last term (see notes)
 
 end
