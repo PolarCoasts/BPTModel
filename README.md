@@ -193,6 +193,8 @@ Any optional inputs can be modified from the default by entering 'name=value' as
 ### Outputs from BPTmodel
 The model output is packaged into a single structure with the following four substructures.
 
+<br/>
+
 **plume**:  Substructure containint the model results.
 | field name		| description												| units		| calculation		|
 | :---				| :---														| :---:			| :---:				|
@@ -212,6 +214,8 @@ The model output is packaged into a single structure with the following four sub
 | maximumH		| shallowest depth (maximum height) reached by plume				| m			|				|
 | units			| units for each of the plume variables above						|			|				|
 
+<br/>
+
 **ambient_ocean**:  Substructure containing the ambient ocean profiles used by the model. This is the interpolated/extrapolated version of the user-input profile variables and additional variables calculated from them.
 | field name		| description												| units		|
 | :---				| :---														| :---:			|
@@ -222,6 +226,8 @@ The model output is packaged into a single structure with the following four sub
 | u_horiz			| horizontal along-ice velocity									| m/s			|
 | N2				| buoyancy frequency										| s^-1		|
 | units			| units for each of the ambient ocean variables above				|			|
+
+<br/>
 
 **initial_cond**:  Substructure containing the user-input or default variables for initial conditions used by the model.
 | field name		| description												| units		|
@@ -236,7 +242,9 @@ The model output is packaged into a single structure with the following four sub
 | plumeType		| geometry/configuration ('line', 'point', or 'stacked')					|			|
 | units			| units for each of the initial condition variables above				|			|
 
-* If this field reads 'balance', then the initial velocity was calculated as a balance of momentum and buoyancy
+*If this field reads 'balance', then the initial velocity was calculated as a balance of momentum and buoyancy
+
+<br/>
 
 **coeff**:  Substructure containing the user-input or default values for coefficients used by the model.
 | field name		| description				|
