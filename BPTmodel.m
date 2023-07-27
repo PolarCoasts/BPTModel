@@ -6,8 +6,8 @@ arguments
    aS (1,:) {mustBeEqualSize(aD,aS)}                                    % ambient profile of salinity (psu)
    GL (1,1) {mustBeLessThan(GL,0)}                                      % grounding line depth (m)
    Q (1,1) {mustBeGreaterThan(Q,0)}                                     % subglacial discharge flux (m^3/s)
-   options.iceT (1,1) double=-10                                        % ice temperature (degrees C)
-   options.W (1,1) double=100                                           % line plume outlet width (m) 
+   options.iceT (1,1) {mustBeLessThanOrEqual(options.iceT,0)}=-10       % ice temperature (degrees C)
+   options.W (1,1) {mustBeGreaterThanOrEqual(options.W,1)}=100          % line plume outlet width (m) 
    options.uh (1,1) double=0                                            % horizontal velocity relevant for melting (m/s)
    options.ui {mustBeValueOrChar(options.ui,"balance")}='balance'       % initial velocity (m/s), 'balance' of momentum and buoyancy or set value
    options.alpha (1,1) double=0.1                                       % entrainment coefficient
@@ -100,7 +100,7 @@ warning('off','MATLAB:ode45:IntegrationTolNotMet')
 % for stacked plumes, always use a unit width
 if strcmp(options.type,'stacked')
     if options.W~=100 && options.W~=1
-        warning('Stacked plumes are always calculated per unit terminus width')
+        warning('Stacked plumes are always calculated per meter terminus width')
     end
     options.W=1;
 end
@@ -113,30 +113,35 @@ elseif strcmp(options.type,'point')
 end
 
 % simple validations of input profiles
-% --- This is designed to catch the most obvious problems, but should not be used as as validation of adequate data ---
+% --- This is designed to catch the most obvious problems, but should not be used as a validation of adequate data ---
 top=max(aD(~isnan(aT) & ~isnan(aS))); bottom=min(aD(~isnan(aT) & ~isnan(aS))); getinput=0;
 if sum(~isnan(aT))<10 || sum(~isnan(aS))<10
-    error("Ambient ocean profiles must contain more than 10 good data points.")
+    error(sprintf("Ambient ocean profiles must contain more than 10 good data points.\n"))
 end
-if isstring(options.intMethod)
-    intMsg="Data will be extrapolated per the methods set by interp1().";
+if isstring(options.extValue_T) || ischar(options.extValue_T)
+    TintMsg="Missing temperature data will be extrapolated per the methods set by interp1(). ";
 else
-    intMsg="Data will be filled with a value of "+options.extValue_T+" for temp and a value of "+options.extValue_S+" for salinity.";
+    TintMsg="Missing temperature data will be filled with a value of "+options.extValue_T+". ";
+end
+if isstring(options.extValue_S) || ischar(options.extValue_S)
+    SintMsg="Missing salinity data will be extrapolated per the methods set by interp1(). ";
+else
+    SintMsg="Missing salinity data will be filled with a value of "+options.extValue_S+". ";
 end
 if top<-10
-    warning("Ambient ocean profiles have no data over the top "+ abs(top) + " m. " + intMsg)
+    warning(sprintf("Ambient ocean profiles are missing data over the top "+ abs(top) + " m. " + TintMsg + SintMsg +" \n"))
     getinput=1;
 end
 if bottom-GL>5
-    warning("Ambient ocean profiles have no data within " + bottom-GL + " m of the grounding line. " + intMsg)
+    warning(sprintf("Ambient ocean profiles are missing data over the bottom " + (bottom-GL) + " m (above the grounding line). " + TintMsg + SintMsg +" \n"))
     getinput=1;
 end
 if sum(isnan(aT))/length(aT)>.1 || sum(isnan(aS))/length(aS)>.1
-    warning("Ambient ocean profiles contain greater than 10% NaNs")
+    warning(sprintf("Ambient ocean profiles contain greater than 10%% NaNs. \n"))
     getinput=1;
 end
-if mean(diff(aD))>6
-    warning("Ambient ocean profiles have a mean depth interval greater than 6 m")
+if abs(mean(diff(aD)))>5
+    warning(sprintf("Ambient ocean profiles have a mean depth interval greater than 5 m\n"))
     getinput=1;
 end
 if getinput==1
@@ -145,6 +150,8 @@ if getinput==1
         userinfo='n';
     end
     if userinfo~='y'
+        experiment=[];
+        fprintf("\nModel run aborted\n")
         return
     end
 end
@@ -202,7 +209,7 @@ if strcmp(options.type,'line') || strcmp(options.type,'stacked')
     bi = qsg / ui; %plume thickness in cross-terminus direction (m)
 elseif strcmp(options.type,'point')
     if ismember(options.ui,"balance")
-        ui = 2/pi*(5*pi^2*gp/(32*options.alpha))^(2/5)*qsg^(1/5); 
+        ui = 2/pi*(pi^2*gp/(8*options.alpha))^(2/5)*qsg^(1/5); 
     else
         ui=options.ui;
     end
@@ -385,10 +392,12 @@ function mustBeEqualSize(a,b)
 end
 
 function mustBeValueOrChar(a,string)
-    if ~ismember(a,string) && ~isscalar(a)
-        eid='Value:Error';
-        msg="extValue must be 'extrapolate' or a constant value";
-        throwAsCaller(MException(eid,msg))
+    if ~isscalar(a)
+        if ~ismember(a,string)
+            eid='Value:Error';
+            msg="extValue must be 'extrap' or a constant value";
+            throwAsCaller(MException(eid,msg))
+        end
     end
 end
     

@@ -2,7 +2,7 @@ function [melt, Tb, Sb] = melt_calc(z, u, T, S, const, options)
 
 arguments
     z (1,:) {mustBeLessThanOrEqual(z,0)}        % depth (m)
-    u (1,:) {mustBeEqualSize(u,z)}              % velocity that drives melting (m/s)
+    u (1,:) {mustBeScalarOrEqualSize(u,z)}      % velocity that drives melting (m/s)
     T (1,:) {mustBeEqualSize(T,z)}              % temperature outside the BL (e.g. in plume) (C)
     S (1,:) {mustBeEqualSize(S,z)}              % salinity outside the BL (e.g. in plume) (psu)
     const.cw (1,1) double=3974                  % heat capacity of seawater (J kg^-1 C^-1)
@@ -46,6 +46,10 @@ end
 %
 % See also BPTmodel, line_plume, point_plume
 
+% if single value for u is entered, make it a uniform profile
+if isscalar(u)
+    u=ones(size(z))*u;
+end
 
 
 % define a, b, c to solve quadratic equation for Sb
@@ -74,3 +78,14 @@ function mustBeEqualSize(a,b)
         throwAsCaller(MException(eid,msg))
     end
 end
+
+function mustBeScalarOrEqualSize(a,b)
+    if ~isscalar(a)
+        if ~isequal(size(a),size(b))
+            eid='Size:notEqual';
+            msg='Vector for along-ice velocity must be scalar or have same dimensions as depth profile';
+         throwAsCaller(MException(eid,msg))
+        end
+    end
+end
+
