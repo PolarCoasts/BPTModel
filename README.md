@@ -5,6 +5,7 @@ BPTModel is a one-dimensional model based on buoyant plume theory in the context
 
 The most current version of BPTModel can be found at: 
 
+https://github.com/PolarCoasts/BPTModel
 
 ## Requirements
 - MATLAB version 2019b or later
@@ -297,6 +298,8 @@ The model output is packaged into a single structure with the following four sub
 The BPTModel package was developed by Bridget Ovall. The mathematical basis for this model comes from Jenkins (2011) with modifications for point-plume geometry from Cowton et. al (2015). Adaptations for stacked melt plumes with consideration of fjord-scale circulation are based on Jackson et. al (2020). 
 
 If using this model in a published work, please provide a link to our lab's GitHub page so that others can find it, too. 
+
+https://github.com/PolarCoasts/BPTModel
 
 ## References
 
