@@ -196,7 +196,7 @@ The model output is packaged into a single structure with the following four sub
 
 <br/>
 
-**plume**:  Substructure containint the model results.
+**plume**:  Substructure containing the model results.
 | field name		| description												| units		| calculation		|
 | :---				| :---														| :---:			| :---:				|
 | depth			| depth coordinate of all profiles									| m			|				|
