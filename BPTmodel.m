@@ -17,6 +17,8 @@ arguments
    options.intMethod char {mustBeMember(options.intMethod,{'linear','nearest','next','previous','pchip','cubic','v5cubic','makima','spline'})}='linear'  % method for interpolating ambient profile
    options.extValue_T {mustBeValueOrChar(options.extValue_T,"extrap")}='extrap' % to extend ambient profile to full plume range, extrapolate or set to specific value
    options.extValue_S {mustBeValueOrChar(options.extValue_S,"extrap")}='extrap' % to extend ambient profile to full plume range, extrapolate or set to specific value
+   options.type char {mustBeMember(options.type,{'line','point','stacked','corner'})}='line' % run model as line- or point-plume, stacked runs a series of line-plumes to simulate melt with no discharge
+    %NOTE: undocumented type='corner' is experimental
 end
 % BPTMODEL 1D model of buoyant plumes in the context of marine-terminating glaciers, solved in depth space
 %
@@ -107,6 +109,7 @@ end
 % convert discharge to m2/s for line plume or keep as m3/s for point plume
 if strcmp(options.type,'line') || strcmp(options.type,'stacked')
     qsg = Q/options.W;
+elseif strcmp(options.type,'point') || strcmp(options.type,'corner')
     qsg = Q;
 end
 
@@ -212,6 +215,13 @@ elseif strcmp(options.type,'point')
         ui = options.ui;
     end
     bi = sqrt(2*qsg / (pi*ui)); %plume radius (m)
+elseif strcmp(options.type,'corner')
+    if ~isscalar(options.ui) && ismember(options.ui,"balance")
+        ui = 4/pi*(pi^2*gp/(32*options.alpha))^(2/5)*qsg^(1/5);
+    else
+        ui = options.ui;
+    end
+    bi = sqrt(4*qsg / (pi*ui)); %plume radius (m)
 end
 %% Solve coupled system of ODEs 
 % using a 4th order MATLAB integrator
@@ -222,6 +232,8 @@ if strcmp(options.type,'line')
     [z,X]=ode45(@(Z,x) line_plume(Z,x,const,options,experiment.ambient_ocean),[GL,surface],[bi,ui,ti,si]);
 elseif strcmp(options.type,'point')
     [z,X]=ode45(@(Z,x) point_plume(Z,x,const,options,experiment.ambient_ocean),[GL,surface],[bi,ui,ti,si]);
+elseif strcmp(options.type,'corner')
+    [z,X]=ode45(@(Z,x) corner_plume(Z,x,const,options,experiment.ambient_ocean),[GL,surface],[bi,ui,ti,si]);
 elseif strcmp(options.type,'stacked')
     di=GL; % initial depth of bottom plume is grounding line depth
     count=0; maxH=[]; nD=[];
