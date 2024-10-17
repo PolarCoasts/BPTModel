@@ -9,7 +9,7 @@ https://github.com/PolarCoasts/BPTModel
 
 ## Requirements
 - MATLAB version 2019b or later
-- seawater toolbox
+- seawater toolbox (toolbox now obsolete, find archived version at https://www.cmar.csiro.au/datacentre/ext_docs/seawater.html)
 
 
 ## Quick start guide
