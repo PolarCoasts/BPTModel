@@ -108,7 +108,7 @@ The variables available for plotting are:
 | "radius"			| plume radius (point plume) or thickness (line plume) 	| m		|
 | "w"				| plume vertical velocity							| m/s		|
 | "temp"			| plume temperature*								| C		|
-| "salt"			| plume salinity*									| psu		|
+| "salt"			| plume salinity*									| g/kg	|
 | "density"			| plume density*								| kg/m^3	|
 | "volumeFlux"		| vertical flux of volume within plume					| m^3/s	|
 | "momentumFlux"	| vertical flux of momentum within plume				| kg*m/s^2 |
@@ -221,7 +221,7 @@ The model output is packaged into a single structure with the following four sub
 | w				| vertical velocity											| m/s			|				|
 | temp			| plume conservative temperature								| C			|				|
 | salt				| plume absolute salinity										| g/kg		|				|
-| density			| plume density												| kg/m^3		|				|
+| density			| plume sigma Θ density										| kg/m^3		|				|
 | area			| cross-sectional area of plume									| m^2		|				|
 | volumeFlux		| volume of flow through cross-sectional area of plume per unit time		| m^3/s		| $F_V=Aw$		|
 | momentumFlux	| flow of momentum through cross-sectional area of plume per unit time	| kg m/s^2		| $F_m=ρAw^2$	|
@@ -238,9 +238,9 @@ The model output is packaged into a single structure with the following four sub
 | field name		| description												| units		|
 | :---				| :---														| :---:			|
 | depth			| depth coordinate of all profiles									| m			|
-| temp			| ambient ocean temperature									| C			|
-| salt				| ambient ocean salinity										| g/kg		|
-| density			| ambient ocean density										| kg/m^3		|
+| temp			| ambient ocean conservative temperature							| C			|
+| salt				| ambient ocean absolute salinity								| g/kg		|
+| density			| ambient ocean sigma Θ density								| kg/m^3		|
 | u_horiz			| horizontal along-ice velocity									| m/s			|
 | N2				| buoyancy frequency										| s^-1		|
 | units			| units for each of the ambient ocean variables above				|			|
@@ -254,8 +254,8 @@ The model output is packaged into a single structure with the following four sub
 | outletW			| discharge outlet width (line plume)								| m			|
 | Q				| subglacial discharge flux										| m^3/s		|
 | iceTemp			| temperature of ice											| C			|
-| ti				| initial plume/discharge temperature								| C			|
-| si				| initial plume/discharge salinity									| g/kg		|
+| ti				| initial plume/discharge conservative temperature					| C			|
+| si				| initial plume/discharge absolute salinity							| g/kg		|
 | ui				| initial plume vertical velocity or method of calculation*				| m/s 		|
 | plumeType		| geometry/configuration ('line', 'point', or 'stacked')					|			|
 | units			| units for each of the initial condition variables above				|			|

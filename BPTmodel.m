@@ -402,7 +402,7 @@ experiment.initial_cond.ti = ti;
 experiment.initial_cond.si = si;
 experiment.initial_cond.ui = options.ui;
 experiment.initial_cond.plumeType = options.type;
-experiment.initial_cond.units={'GL (m)'; 'outletW (m)'; 'Q (m^3 s^{-1})'; 'iceTemp (C)'; 'ti (C)'; 'si (psu)'; 'ui (m s^{-1})'};
+experiment.initial_cond.units={'GL (m)'; 'outletW (m)'; 'Q (m^3 s^{-1})'; 'iceTemp (C)'; 'ti (C)'; 'si (g/kg)'; 'ui (m s^{-1})'};
 
 %% Return coefficients used
 experiment.coeff.alpha = options.alpha;
