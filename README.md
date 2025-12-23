@@ -107,9 +107,9 @@ The variables available for plotting are:
 | :---				| :---											| :---:		|
 | "radius"			| plume radius (point plume) or thickness (line plume) 	| m		|
 | "w"				| plume vertical velocity							| m/s		|
-| "temp"			| plume temperature*								| C		|
-| "salt"			| plume salinity*									| g/kg	|
-| "density"			| plume density*								| kg/m^3	|
+| "temp"			| plume conservative temperature*					| C		|
+| "salt"			| plume absolute salinity*							| g/kg	|
+| "density"			| plume sigma Θ density*							| kg/m^3	|
 | "volumeFlux"		| vertical flux of volume within plume					| m^3/s	|
 | "momentumFlux"	| vertical flux of momentum within plume				| kg*m/s^2 |
 | "melt"			| melt rate										| m/day	|
