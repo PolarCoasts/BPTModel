@@ -9,15 +9,16 @@ ambS=28-5./logspace(.1,1.8,length(ambD));
 %% Define grounding line depth and discharge flux
 gl=-290; % (m)
 q=200;   % (m^3/s)
+lat=60;
 
 %% Run model with default values and plot all plume properties
-ex1=BPTmodel(ambD,ambT,ambS,gl,q);
+ex1=BPTmodel(ambD,ambT,ambS,gl,q,lat);
 
 [fig1,ax1]=BPTplots(ex1,'all');
 title(ax1(1),'Line Plume','Position',[0 1.5],'HorizontalAlignment','left');
 
 %% Run model as a point plume, specify entrainment coefficient, and plot just radius and vertical velocity
-ex2=BPTmodel(ambD,ambT,ambS,gl,q,type='point',alpha=.08);
+ex2=BPTmodel(ambD,ambT,ambS,gl,q,lat,type='point',alpha=.08);
 
 [fig2,ax2]=BPTplots(ex2,["radius" "w"]);
 title(ax2(1),'Point Plume','Position',[0 1.5],'HorizontalAlignment','left');
@@ -26,7 +27,7 @@ title(ax2(1),'Point Plume','Position',[0 1.5],'HorizontalAlignment','left');
 noq=1e-10; %small discharge to initiate plume
 uhoriz=0.2; %ambient along-terminus velocity
 
-ex3=BPTmodel(ambD,ambT,ambS,gl,noq,uh=uhoriz,type='stacked');
+ex3=BPTmodel(ambD,ambT,ambS,gl,noq,lat,uh=uhoriz,type='stacked');
 
 [fig3,ax3]=BPTplots(ex3);
 title(ax3(1),'Stacked Ambient Melt Plumes','Position',[0 1.5],'HorizontalAlignment','left');

@@ -1,4 +1,4 @@
-function experiment = BPTmodel(aD,aT,aS,GL,Q,options)
+function experiment = BPTmodel(aD,aT,aS,GL,Q,lat,options)
 
 arguments
    aD (1,:) {mustBeLessThanOrEqual(aD,0)}                               % ambient profile depths (m)
@@ -6,6 +6,10 @@ arguments
    aS (1,:) {mustBeEqualSize(aD,aS)}                                    % ambient profile of salinity (psu)
    GL (1,1) {mustBeLessThan(GL,0)}                                      % grounding line depth (m)
    Q (1,1) {mustBeGreaterThan(Q,0)}                                     % subglacial discharge flux (m^3/s)
+   lat (1,1) double                                                     % latitude (necessary to convert from SP to SA **and** to calculate freezing CT)
+   options.Ttype char {mustBeMember(options.Ttype,{'PT','CT'})}='CT'    % define form of input temperature (potential temp [PT] referenced to 0 dbar or conservative temp [CT])
+   options.Stype char {mustBeMember(options.Stype,{'SP','SA'})}='SA'    % define form of input salinity (practical salinity [SP] or absolute salinity [SA])
+   options.lon (1,1) double=NaN                                          % longitude (necessary only to convert from SP to SA)
    options.iceT (1,1) {mustBeLessThanOrEqual(options.iceT,0)}=-10       % ice temperature (degrees C)
    options.W (1,1) {mustBeGreaterThanOrEqual(options.W,1)}=100          % line plume outlet width (m) 
    options.uh (1,1) double=0                                            % horizontal velocity relevant for melting (m/s)
@@ -157,6 +161,19 @@ if getinput==1
     end
 end
 
+% if necessary, convert S to absolute salinity and T to conservative temp
+if strcmp(options.Stype,'PS')
+    if isnan(options.lon)
+        error(sprintf("Both longitude and latitude are required to convert from practical salinity to absolute salinity.\n"))
+    end
+    aP=gsw_p_from_z(aD,lat);
+    aS=gsw_SA_from_SP(aS,aP,options.lon,lat);
+end
+if strcmp(options.Ttype,'PT')
+    fprintf("\nAssuming potential temperature input is referenced to 0 dbar")
+    aT=gsw_CT_from_pt(aS,aT);
+end
+
 % interpolate ambient profile to 0.1 m depth increments, extrapolate/fill to full depth range
 ii=find(~isnan(aT) & ~isnan(aS));
 aD_good=aD(ii); aT_good=aT(ii); aS_good=aS(ii);
@@ -165,7 +182,8 @@ ambientTemp=interp1(aD_good,aT_good,depth,options.intMethod,options.extValue_T);
 ambientSalt=interp1(aD_good,aS_good,depth,options.intMethod,options.extValue_S);
 
 %calculate ambient density profile 
-ambientRho = sw_pden(ambientSalt,ambientTemp,abs(depth),0);
+% ambientRho = sw_pden(ambientSalt,ambientTemp,abs(depth),0);
+ambientRho = gsw_sigma0(ambientSalt,ambientTemp);
 
 % Include interpolated input variables in output structure
 experiment.ambient_ocean.depth = depth;
@@ -173,6 +191,9 @@ experiment.ambient_ocean.temp = ambientTemp;
 experiment.ambient_ocean.salt = ambientSalt;
 experiment.ambient_ocean.density = ambientRho;
 experiment.ambient_ocean.u_horiz = options.uh;
+% return input latitude and longitude for reference
+experiment.ambient_ocean.lat=lat;
+experiment.ambient_ocean.lon=options.lon;
 
 %% Define Constants
 const.g = 9.81; %gravitational acceleration (m s^-2)
@@ -189,7 +210,7 @@ const.lambda3 = 0.000761; %variation of freezing point with depth (C m^-1)
 
 %% Initial conditions of plume at grounding line
 
-ti = sw_fp(0,abs(GL)); %initial plume starts at freezing point
+ti = gsw_CT_freezing(0,gsw_p_from_z(GL,lat)); %initial plume starts at freezing point
 si = 0.0001; % initial plume salinity  (note: needs > 0 for integration to converge)
 
 surface = 0;
@@ -197,7 +218,7 @@ surface = 0;
 % find ambient rho and plume rho at grounding line --> calculate g' (gp)
 iGL = find(abs(depth)==abs(GL),1);
 ambientRho_GL = ambientRho(iGL);
-plumeRho_GL = sw_pden(si,ti,abs(GL),0);
+plumeRho_GL = gsw_sigma0(si,ti);
 gp = (ambientRho_GL-plumeRho_GL)*const.g/const.rho0;
 
 % initial velocity of plume
@@ -246,8 +267,8 @@ elseif strcmp(options.type,'stacked')
         aX(count)={tX};
         %recalculate initial conditions for next plume
         di=round(tz(end)+.1,1);
-        ti=sw_fp(0,abs(di));
-        gp=(ambientRho(abs(depth)==abs(di))-sw_pden(si,ti,abs(di),0))*const.g/const.rho0;
+        ti=gsw_CT_freezing(0,gsw_p_from_z(di,lat));
+        gp=(ambientRho(abs(depth)==abs(di))-gsw_sigma0(si,ti))*const.g/const.rho0;
         ui=(gp*qsg/options.alpha)^(1/3);
         bi=qsg/ui;
         % store max plume height for each plume
@@ -272,7 +293,7 @@ if strcmp(options.type,'stacked')
         at(i,:)=interp1(az{i},aX{i}(:,3),depth);
         as(i,:)=interp1(az{i},aX{i}(:,4),depth);
         % find neutral density for each plume
-        arho=sw_pden(as(i,:),at(i,:),depth,0);
+        arho=gsw_sigma0(as(i,:),at(i,:));
         nDi=find(arho<=ambientRho,1);
         nD=[nD depth(nDi)];
     end
@@ -315,7 +336,7 @@ uTot=sqrt(w.^2 + options.uh.^2);
 melt=24*60*60*melt_ms;
 
 %plume density (kg m^-3)
-density=sw_pden(salt,temp,abs(depth),0);
+density=gsw_sigma0(salt,temp);
 
 %momentum flux (kg m/s^2)
 Fm=w.*w.*density.*area;   
@@ -360,13 +381,13 @@ elseif strcmp(options.type,'stacked')
 end
 
 %add units for all plume variables
-experiment.plume.units={'depth (m)'; 'radius (m)'; 'w (m s^{-1})'; 'temp (C)'; 'salt (psu)'; 'density (kg m^{-3})'; 'area (m^2)'; 'volumeFlux (m^3 s^{-1})'; 'momentumFlux (kg m s^{-2})'; 'melt (m day^{-1})'; 'maximumMD (m)'; 'neutralDensity (m)'; 'maximumH (m)'};
+experiment.plume.units={'depth (m)'; 'radius (m)'; 'w (m s^{-1})'; 'temp (C)'; 'salt (g/kg)'; 'density (kg m^{-3})'; 'area (m^2)'; 'volumeFlux (m^3 s^{-1})'; 'momentumFlux (kg m s^{-2})'; 'melt (m day^{-1})'; 'maximumMD (m)'; 'neutralDensity (m)'; 'maximumH (m)'};
 
 %% calculate N2 of ambient profile
 experiment.ambient_ocean.N2 = real(sqrt(const.g/const.rho0 * diff(ambientRho))); 
 
 %add units for all ambient ocean variables
-experiment.ambient_ocean.units={'depth (m)'; 'temp (C)'; 'salt (psu)'; 'density (kg m^{-3})'; 'u_horiz (m s^{-1})'; 'N2 (s^{-1})'};
+experiment.ambient_ocean.units={'depth (m)'; 'temp (C)'; 'salt (g/kg)'; 'density (kg m^{-3})'; 'u_horiz (m s^{-1})'; 'N2 (s^{-1})'};
 
 %% Return initial conditions
 experiment.initial_cond.GL = GL;

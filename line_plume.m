@@ -47,9 +47,9 @@ wmelt = sqrt(X(2).^2 + ambient.u_horiz.^2);
 [melt, Tb, Sb] = melt_calc(z, wmelt, X(3), X(4), lambda1=const.lambda1, lambda2=const.lambda2, lambda3=const.lambda3, gammaT=options.gammaT, gammaS=options.gammaS, Cd=options.Cd, iceT=options.iceT, L=const.L, ci=const.ci, cw=const.cw);
 
 % ODEs for radius, velocity, temperature, and salinity. From Jenkins 2011.    
- yDot(1)=2*options.alpha+2*melt/(X(2))-X(1)*const.g*(interp1(ambient.depth,ambient.density,z)-sw_pden(X(4),X(3),abs(z),0))/(X(2)*X(2)*const.rho0)+options.Cd;
+ yDot(1)=2*options.alpha+2*melt/(X(2))-X(1)*const.g*(interp1(ambient.depth,ambient.density,z)-gsw_sigma0(X(4),X(3)))/(X(2)*X(2)*const.rho0)+options.Cd;
 
- yDot(2)=-options.alpha*X(2)/X(1)-melt/(X(1))+const.g*(interp1(ambient.depth,ambient.density,z)-sw_pden(X(4),X(3),abs(z),0))/(X(2)*const.rho0)-options.Cd*X(2)/(X(1));
+ yDot(2)=-options.alpha*X(2)/X(1)-melt/(X(1))+const.g*(interp1(ambient.depth,ambient.density,z)-gsw_sigma0(X(4),X(3)))/(X(2)*const.rho0)-options.Cd*X(2)/(X(1));
 
  yDot(3)=options.alpha*(interp1(ambient.depth,ambient.temp,z)-X(3))/X(1)+melt*(Tb-X(3))/(X(1)*X(2))-options.gammaT*sqrt(options.Cd)*(X(3)-Tb)/(X(1))*wmelt/X(2);
 

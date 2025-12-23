@@ -4,7 +4,7 @@ arguments
     z (1,:) {mustBeLessThanOrEqual(z,0)}        % depth (m)
     u (1,:) {mustBeScalarOrEqualSize(u,z)}      % velocity that drives melting (m/s)
     T (1,:) {mustBeEqualSize(T,z)}              % temperature outside the BL (e.g. in plume) (C)
-    S (1,:) {mustBeEqualSize(S,z)}              % salinity outside the BL (e.g. in plume) (psu)
+    S (1,:) {mustBeEqualSize(S,z)}              % salinity outside the BL (e.g. in plume) (g/kg)
     const.cw (1,1) double=3974                  % heat capacity of seawater (J kg^-1 C^-1)
     const.ci (1,1) double=2009                  % heat capacity of ice (J kg^-1 C^-1)
     const.L (1,1) double=335000;                % latent heat of fusion (J kg^-1)
